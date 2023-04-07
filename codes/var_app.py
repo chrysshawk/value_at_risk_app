@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from var import VaR
-from scipy.stats import norm
+# from var import VaR
+# from scipy.stats import norm
 import yfinance as yf
 
 plt.rcParams['figure.figsize'] = (8, 5)
@@ -63,28 +63,30 @@ def analyze_portfolio(data, weights, initial_investment, period=1, alpha=5):
     pf_std = np.sqrt(weights.T.dot(cov_matrix).dot(weights))
     
     # Historical VaR & CVaR
-    VaR = calc_hist_VaR(daily_returns, alpha=5)
-    CVaR = calc_hist_CVaR(daily_returns, alpha=5)
+    VaR = calc_hist_VaR(daily_returns['portfolio'], alpha=5)
+    CVaR = calc_hist_CVaR(daily_returns['portfolio'], alpha=5)
     
     # Projections
-    period = np.arange(1, period+1) # use array for graphing; access -1 for actual period
+    period = np.arange(1, period+1)  # use array for plotting
     pf_exp_return = pf_return * period
     pf_exp_std = pf_std * np.sqrt(period)
     VaR_exp = VaR * np.sqrt(period)
     CVaR_exp = CVaR * np.sqrt(period)
     
     # Investment level
-    return_inv = np.round(initial_investment * period, 2)
-    VaR_inv = np.round(initial_investment * -VaR_exp, 2)
-    CVaR_inv = np.round(initial_investment * -CVaR_exp, 2)
+    return_inv = np.round(initial_investment * pf_exp_return, 2)
+    VaR_inv = np.round(initial_investment - VaR_exp, 2)
+    CVaR_inv = np.round(initial_investment - CVaR_exp, 2)
+    
+    print(VaR_inv)
     
     # Reporting
-    print('Expected Portfolio Return:     ', return_inv[-1])
-    print('Value at Risk 95th CI:         ', VaR_inv[-1])
-    print('Conditional VaR 95th CI:       ', CVaR_inv[-1])
+    #print('Expected Portfolio Return:     ', return_inv[-1])
+    #print('Value at Risk 95th CI:         ', VaR_inv['portfolio'][-1])
+    #print('Conditional VaR 95th CI:       ', CVaR_inv['portfolio'][-1])
     
     # Plotting
-    plot_VaR_CVaR(daily_returns['portfolio'], VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
+    plot_VaR_CVaR(daily_returns['portfolio'] * initial_investment, VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
     
     return VaR_inv, CVaR_inv
 
@@ -96,4 +98,5 @@ weights = np.array([.3, .3, .2, .2])
 period = 1  # days
 initial_investment = 1000
 data = get_data(stocks, start_date, end_date)
-rets, var, cvar = analyze_portfolio(data, weights, initial_investment, period)
+
+analyze_portfolio(data, weights, initial_investment, period=1)
