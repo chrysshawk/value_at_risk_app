@@ -37,12 +37,12 @@ def calc_hist_CVaR(returns, alpha=5):
         raise TypeError('Returns must be a Pandas Series or Pandas DataFrame')
 
 
-def plot_VaR_CVaR(rets, VaR, CVaR, alpha=5):
+def plot_VaR_CVaR(daily_returns, VaR, CVaR, alpha=5):
     plt.figure(figsize=(6, 3))
-    plt.plot(rets)
-    plt.axhline(y=var, color='r', linestyle='--',
+    plt.plot(daily_returns)
+    plt.axhline(y=VaR, color='r', linestyle='--',
                 label=f'VaR ({100-alpha}% confidence)')
-    plt.axhline(y=cvar, color='g', linestyle='--',
+    plt.axhline(y=CVaR, color='g', linestyle='--',
                 label=f'CVaR ({100-alpha}% confidence)')
     plt.legend()
     plt.xlabel('Date')
@@ -84,7 +84,7 @@ def analyze_portfolio(data, weights, initial_investment, period=1, alpha=5):
     print('Conditional VaR 95th CI:       ', CVaR_inv[-1])
     
     # Plotting
-    plot_VaR_CVaR()
+    plot_VaR_CVaR(daily_returns['portfolio'], VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
     
     return VaR_inv, CVaR_inv
 
