@@ -6,9 +6,9 @@ import seaborn as sns
 # from scipy.stats import norm
 import yfinance as yf
 
-plt.rcParams['figure.figsize'] = (8, 5)
-plt.rcParams['figure.dpi'] = 300
-plt.rcParams['savefig.dpi'] = 300
+plt.rcParams['figure.figsize'] = (6, 4)
+plt.rcParams['figure.dpi'] = 200
+plt.rcParams['savefig.dpi'] = 200
 sns.set()
 
 
@@ -37,13 +37,13 @@ def calc_hist_CVaR(returns, alpha=5):
         raise TypeError('Returns must be a Pandas Series or Pandas DataFrame')
 
 
-def plot_VaR_CVaR(daily_returns, VaR, CVaR, alpha=5):
+def plot_VaR_CVaR(daily_returns, VaR, CVaR, alpha=.05):
     plt.figure(figsize=(6, 3))
     plt.plot(daily_returns)
     plt.axhline(y=VaR, color='r', linestyle='--',
-                label=f'VaR ({100-alpha}% confidence)')
+                label=f'VaR ({100-alpha*100}% confidence)')
     plt.axhline(y=CVaR, color='g', linestyle='--',
-                label=f'CVaR ({100-alpha}% confidence)')
+                label=f'CVaR ({100-alpha*100}% confidence)')
     plt.legend()
     plt.xlabel('Date')
     plt.ylabel('Daily Returns')
@@ -51,54 +51,65 @@ def plot_VaR_CVaR(daily_returns, VaR, CVaR, alpha=5):
     plt.show()
 
 
-def analyze_portfolio(data, weights, initial_investment, period=1, alpha=5):
-    # Asset level
-    daily_returns = np.log(data / data.shift(1)).dropna()
-    cov_matrix = daily_returns.cov()
-    asset_mean_returns = daily_returns.mean()
+def calc_VaR_CVaR_hist(returns, alpha):
+    VaR = returns.quantile(alpha)
+    CVaR = returns[returns <= VaR].mean()
+    return VaR, CVaR
+
+def analyze_portfolio(data, weights, initial_investment, period=1, alpha=.05):
+    # Calctulate Returns
+    daily_rets = np.log(data / data.shift(1)).dropna()
+    daily_rets['PF'] = daily_rets.dot(weights)
+    mean_rets = daily_rets.mean()
     
-    # Portfolio level; remember we use this to say something about the future
-    pf_daily_returns = np.dot(daily_returns, weights)
-    pf_return = np.sum(weights * asset_mean_returns)
+    # Metrics
+    cov_matrix = daily_rets.iloc[:, 0:len(weights)].cov()
     pf_std = np.sqrt(weights.T.dot(cov_matrix).dot(weights))
     
     # Historical VaR & CVaR
-    print(type(pf_daily_returns))
-    print(pf_daily_returns)
-    VaR = calc_hist_VaR(pf_daily_returns, alpha=alpha)
-    CVaR = calc_hist_CVaR(pf_daily_returns, alpha=alpha)
+    VaR, CVaR = calc_VaR_CVaR_hist(daily_rets, alpha)
+    
+    # Investment Adj VaR & CVaR
+    inv_weighted = initial_investment * np.append(weights, 1)
+    inv_rets = inv_weighted * daily_rets
+    inv_VaR, inv_CVaR = calc_VaR_CVaR_hist(inv_rets, alpha)
+    plot_VaR_CVaR(inv_rets['PF'], inv_VaR['PF'], inv_CVaR['PF'], alpha)
     
     # Projections
-    period = np.arange(1, period+1)  # use array for plotting
-    pf_exp_return = pf_return * period
-    pf_exp_std = pf_std * np.sqrt(period)
-    VaR_exp = VaR * np.sqrt(period)
-    CVaR_exp = CVaR * np.sqrt(period)
-    
-    # Investment level
-    return_inv = np.round(initial_investment * pf_exp_return, 2)
-    VaR_inv = np.round(initial_investment - VaR_exp, 2)
-    CVaR_inv = np.round(initial_investment - CVaR_exp, 2)
-    
-    print(VaR_inv)
+    period = np.arange(1, period+1)
+    proj_rets = mean_rets * period
+    proj_std = pf_std * np.sqrt(period)
+    proj_VaR = inv_VaR * np.sqrt(period)
+    proj_CVaR = inv_CVaR * np.sqrt(period)
     
     # Reporting
-    print('Expected Portfolio Return:     ', return_inv[-1])
-    print('Value at Risk 95th CI:         ', VaR_inv[-1])
-    print('Conditional VaR 95th CI:       ', CVaR_inv[-1])
+    print('Expected Portfolio Return:         ',
+          initial_investment * proj_rets['PF'])
+    print('Portfolio Value at Risk 95th CI:   ',
+          initial_investment + proj_VaR['PF'])
+    print('Portfolio Conditional VaR 95th CI: ',
+          initial_investment + proj_CVaR['PF'])
     
-    # Plotting
-    #plot_VaR_CVaR(daily_returns['portfolio'] * initial_investment, VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
-    
-    return VaR_inv, CVaR_inv
+    plot_VaR_CVaR(inv_rets['PF'], proj_VaR['PF'], proj_CVaR['PF'], alpha)
 
+    return proj_VaR, proj_CVaR, proj_rets, proj_std
+
+
+def plot_period_VaR_CVaR(inv_rets, inv_VaR, inv_CVaR, period):
+    period = np.arange(1, period+1)
+    
+    plt.plot(var_horizon[:time_horizon], "o",
+         c='blue', marker='*', label='IBM')
+    
 
 stocks = ['AAPL', 'MSFT', 'C', 'DIS']
 start_date = pd.to_datetime('today') - pd.DateOffset(years=5)
 end_date = pd.to_datetime('today')
 weights = np.array([.3, .3, .2, .2])
 period = 1  # days
+alpha = .05
 initial_investment = 1000
+
 data = get_data(stocks, start_date, end_date)
 
 analyze_portfolio(data, weights, initial_investment, period=1)
