@@ -58,13 +58,15 @@ def analyze_portfolio(data, weights, initial_investment, period=1, alpha=5):
     asset_mean_returns = daily_returns.mean()
     
     # Portfolio level; remember we use this to say something about the future
-    daily_returns['portfolio'] = np.dot(daily_returns, weights)
+    pf_daily_returns = np.dot(daily_returns, weights)
     pf_return = np.sum(weights * asset_mean_returns)
     pf_std = np.sqrt(weights.T.dot(cov_matrix).dot(weights))
     
     # Historical VaR & CVaR
-    VaR = calc_hist_VaR(daily_returns['portfolio'], alpha=5)
-    CVaR = calc_hist_CVaR(daily_returns['portfolio'], alpha=5)
+    print(type(pf_daily_returns))
+    print(pf_daily_returns)
+    VaR = calc_hist_VaR(pf_daily_returns, alpha=alpha)
+    CVaR = calc_hist_CVaR(pf_daily_returns, alpha=alpha)
     
     # Projections
     period = np.arange(1, period+1)  # use array for plotting
@@ -81,12 +83,12 @@ def analyze_portfolio(data, weights, initial_investment, period=1, alpha=5):
     print(VaR_inv)
     
     # Reporting
-    #print('Expected Portfolio Return:     ', return_inv[-1])
-    #print('Value at Risk 95th CI:         ', VaR_inv['portfolio'][-1])
-    #print('Conditional VaR 95th CI:       ', CVaR_inv['portfolio'][-1])
+    print('Expected Portfolio Return:     ', return_inv[-1])
+    print('Value at Risk 95th CI:         ', VaR_inv[-1])
+    print('Conditional VaR 95th CI:       ', CVaR_inv[-1])
     
     # Plotting
-    plot_VaR_CVaR(daily_returns['portfolio'] * initial_investment, VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
+    #plot_VaR_CVaR(daily_returns['portfolio'] * initial_investment, VaR_inv[-1], CVaR_inv[-1], alpha=alpha)
     
     return VaR_inv, CVaR_inv
 
